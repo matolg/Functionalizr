@@ -7,7 +7,7 @@ using System.Reflection;
 namespace PatternMatching.Matcher
 {
 	// TODO: add bool for lazy execution with one ctor
-	// TODO: use ConditionalWeakTable for cache
+	// TODO: use ConditionalWeakTable for cache (use Flyweight pattern)
 	public class Pattern<T>
 	{
 		private bool _hasValue;
@@ -16,7 +16,7 @@ namespace PatternMatching.Matcher
 
 		private readonly List<MatchEntry> _matches = new List<MatchEntry>();
 
-		private Dictionary<object, T> _cache = new Dictionary<object, T>();
+		private readonly Dictionary<object, T> _cache = new Dictionary<object, T>();
 
 		public object Object { get; private set; }
 
@@ -91,7 +91,7 @@ namespace PatternMatching.Matcher
 			if (_hasValue)
 				return this;
 
-			Dictionary<ParameterExpression, MemberInfo> bindings;
+			Dictionary<ParameterExpression, Expression> bindings;
 
 			if (!TryMatch(Object, e, out bindings))
 				return this;
@@ -102,9 +102,9 @@ namespace PatternMatching.Matcher
 			return this;
 		}
 
-		private static bool TryMatch(object o, LambdaExpression e, out Dictionary<ParameterExpression, MemberInfo> bindings)
+		private static bool TryMatch(object o, LambdaExpression e, out Dictionary<ParameterExpression, Expression> bindings)
 		{
-			bindings = new Dictionary<ParameterExpression, MemberInfo>();
+			bindings = new Dictionary<ParameterExpression, Expression>();
 
 			var ne = e.Body as NewExpression;
 			if (ne == null)
@@ -142,7 +142,7 @@ namespace PatternMatching.Matcher
 				}
 				else if ((pe = arg as ParameterExpression) != null)
 				{
-					bindings[pe] = property;
+					bindings[pe] = Expression.PropertyOrField(Expression.Convert(e, target), property.Name);
 				}
 				else
 					throw new NotSupportedException("Can only match constants.");
@@ -151,23 +151,23 @@ namespace PatternMatching.Matcher
 			return true;
 		}
 
-		private static T Evaluate(object o, LambdaExpression e, Delegate f, Dictionary<ParameterExpression, MemberInfo> bindings)
+		private static T Evaluate(object o, LambdaExpression e, Delegate f, Dictionary<ParameterExpression, Expression> bindings)
 		{
 			var args = new object[e.Parameters.Count];
 			int j = 0;
 
 			foreach (ParameterExpression param in e.Parameters)
 			{
-				MemberInfo member;
+				Expression member;
 				if (!bindings.TryGetValue(param, out member))
 					throw new InvalidOperationException("Parameter " + param.Name + " was not bound in the pattern match.");
 
-				object value = member == null ? o : Expression.PropertyOrField(param, member.Name);
+				object value = member ?? o;
 
 				if (!value.GetType().IsAssignableFrom(param.Type))
 					throw new InvalidOperationException(
 						String.Format("Property {0} on type {1} cannot be bound to parameter {2}.",
-										member.Name, member.DeclaringType != null ? member.DeclaringType.Name : string.Empty, param.Name));
+										member.Type.Name, member.Type.DeclaringType != null ? member.Type.DeclaringType.Name : string.Empty, param.Name));
 
 				args[j++] = value;
 			}
@@ -194,7 +194,7 @@ namespace PatternMatching.Matcher
 
 			foreach (var entry in _matches)
 			{
-				Dictionary<ParameterExpression, MemberInfo> bindings;
+				Dictionary<ParameterExpression, Expression> bindings;
 
 				if (entry.CompiledMatch != null)
 				{
@@ -240,7 +240,7 @@ namespace PatternMatching.Matcher
 			internal void Compile()
 			{
 				ParameterExpression o = Expression.Parameter(typeof(object), "o");
-				var bindings = new Dictionary<ParameterExpression, MemberInfo>();
+				var bindings = new Dictionary<ParameterExpression, Expression>();
 				Type target = null;
 
 				var matchExpression = CompileMatchExpression(o, target, Match.Body, bindings);
@@ -251,13 +251,13 @@ namespace PatternMatching.Matcher
 				int j = 0;
 				foreach (ParameterExpression param in Match.Parameters)
 				{
-					MemberInfo member;
+					Expression member;
 					if (!bindings.TryGetValue(param, out member))
 						throw new InvalidOperationException("Parameter " + param.Name + " was not bound in the pattern match.");
 
 					// Expression to grab value from property.
 					Expression me = Expression.Convert(o, target);
-					args[j++] = member != null ? Expression.PropertyOrField(me, member.Name) : me;
+					args[j++] = member ?? me;
 				}
 
 				var invoker = Expression.Invoke(Expression.Constant(Action), args);
@@ -265,10 +265,11 @@ namespace PatternMatching.Matcher
 			}
 
 			private Expression CompileMatchExpression(ParameterExpression o, Type target,
-						Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+						Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				Expression match;
 
+				// TODO: here it is a point for extensibility
 				if (Match.Body is NewExpression)
 				{
 					match = CompileNewExpression(o, target, expression, bindings); 
@@ -285,6 +286,8 @@ namespace PatternMatching.Matcher
 				{
 					match = CompileMemberInitExpression(o, target, expression, bindings); 
 				}
+				else if (Match.Body is NewArrayExpression)
+					match = CompileNewArrayExpression(o, target, expression, bindings); 
 				else
 				{
 					throw new NotSupportedException("Unsupported expression detected.");
@@ -294,12 +297,9 @@ namespace PatternMatching.Matcher
 			}
 
 			private MethodCallExpression GetEqualityCheck(ParameterExpression parameterExpression, Type target,
-				MemberInfo left, MemberInfo right)
+				Expression left, MemberInfo right)
 			{
-				var leftPart = 
-					Expression.Convert(
-						Expression.PropertyOrField(
-							Expression.Convert(parameterExpression, target), left.Name), typeof(object));
+				var leftPart = Expression.Convert(left, typeof(object));
 
 				var rightPart = 
 					Expression.Convert(
@@ -321,20 +321,33 @@ namespace PatternMatching.Matcher
 				return Expression.Call(typeof(object), "Equals", new Type[0], leftPart, rightPart);
 			}
 
+			private Expression GetEqualityCheck(ParameterExpression parameterExpression, Type target, int index, Expression right)
+			{
+				var leftPart =
+					Expression.Convert(
+						Expression.ArrayIndex(
+							Expression.Convert(parameterExpression, target), Expression.Constant(index)), typeof(object));
+
+				var rightPart = Expression.Convert(right, typeof(object));
+
+				// TODO: what's wrong with the Object.Equals method?
+				return Expression.Call(typeof(object), "Equals", new Type[0], leftPart, rightPart);
+			}
+
 			private Expression GetTypeCheck(ParameterExpression parameterExpression, Type target)
 			{
 				return Expression.TypeIs(parameterExpression, target);
 			}
 
 			private static bool TryMatchParameterExpression(object o, ParameterExpression pe,
-				Dictionary<ParameterExpression, MemberInfo> bindings)
+				Dictionary<ParameterExpression, Expression> bindings)
 			{
 				bindings[pe] = null;
 				return pe.Type.IsInstanceOfType(o);
 			}
 
 			private Expression CompileNewExpression(ParameterExpression o, Type target,
-				Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				var newExpression = expression as NewExpression;
 
@@ -376,7 +389,7 @@ namespace PatternMatching.Matcher
 			}
 
 			private Expression CompileParameterExpression(ParameterExpression o, Type target,
-				Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				var parameterExpression = expression as ParameterExpression;
 
@@ -391,7 +404,7 @@ namespace PatternMatching.Matcher
 			}
 
 			private Expression CompileConstantExpression(ParameterExpression o, Type target,
-				Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				var constantExpression = expression as ConstantExpression;
 
@@ -404,7 +417,7 @@ namespace PatternMatching.Matcher
 			}
 
 			private Expression CompileMemberInitExpression(ParameterExpression o, Type target,
-				Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				var memberInitExpression = expression as MemberInitExpression;
 
@@ -431,8 +444,53 @@ namespace PatternMatching.Matcher
 				return check; 
 			}
 
+			private Expression CompileNewArrayExpression(ParameterExpression o, Type target,
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
+			{
+				var newArrayExpression = expression as NewArrayExpression;
+
+				if (newArrayExpression == null)
+				{
+					throw new ArgumentException("expression", new Exception("Expression is not instance of NewArrayExpression"));
+				}
+
+				// check for type & length
+				Expression check = Expression.AndAlso(Expression.TypeIs(o, target),
+					Expression.Equal(Expression.ArrayLength(Expression.Convert(o, target)),
+						Expression.Constant(newArrayExpression.Expressions.Count)
+					)
+				);
+
+				int i = 0;
+				foreach (var e in newArrayExpression.Expressions)
+				{
+					ParameterExpression pe;
+					ConstantExpression ce;
+
+					if ((pe = e as ParameterExpression) != null)
+					{
+						if (bindings.ContainsKey(pe))
+						{
+							check = Expression.AndAlso(check, GetEqualityCheck(o, target, i, bindings[pe]));
+						}
+						else
+							bindings[pe] = Expression.ArrayIndex(Expression.Convert(o, target), Expression.Constant(i));
+					}
+					else if ((ce = e as ConstantExpression) != null)
+					{
+						check = Expression.AndAlso(check, GetEqualityCheck(o, target, i, ce));
+					}
+					else
+						throw new NotSupportedException("Can only match constants.");
+
+					i++;
+				}
+
+				return check; 
+			}
+
 			private Expression TryBind(Expression check, ParameterExpression o, Type target, MemberInfo member,
-				Expression expression, Dictionary<ParameterExpression, MemberInfo> bindings)
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 			{
 				ConstantExpression ce;
 				ParameterExpression pe;
@@ -448,7 +506,9 @@ namespace PatternMatching.Matcher
 						check = Expression.AndAlso(check, GetEqualityCheck(o, target, bindings[pe], member));
 					}
 					else
-						bindings[pe] = member;
+					{
+						bindings[pe] = Expression.PropertyOrField(Expression.Convert(o, target), member.Name);
+					}
 				}
 				else
 					throw new NotSupportedException("Can only match constants.");
