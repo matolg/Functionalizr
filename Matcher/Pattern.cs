@@ -353,6 +353,20 @@ namespace PatternMatching.Matcher
 				return Expression.Call(typeof(object), "Equals", new Type[0], leftPart, rightPart);
 			}
 
+			private Expression GetEqualityCheckForDictionaryEntry(ParameterExpression o, Type target,
+				ConstantExpression key, Expression right)
+			{
+				var leftPart =
+					Expression.Convert(
+						Expression.Call(Expression.Convert(o, target), target.GetMethod("get_Item"), key),
+						typeof(object));
+
+				var rightPart = Expression.Convert(right, typeof(object));
+
+				// TODO: what's wrong with the Object.Equals method?
+				return Expression.Call(typeof(object), "Equals", new Type[0], leftPart, rightPart);
+			}
+
 			private Expression GetTypeCheck(ParameterExpression parameterExpression, Type target)
 			{
 				return Expression.TypeIs(parameterExpression, target);
@@ -521,10 +535,66 @@ namespace PatternMatching.Matcher
 				if (listInitExpression.NewExpression.Arguments.Count != 0)
 					throw new NotSupportedException("Collection initializers in match expressions should use the default constructor.");
 
-				if (listInitExpression.Type.GetGenericTypeDefinition() != typeof(List<>))
-					throw new NotSupportedException("Only List<T> is supported.");
+				var t = listInitExpression.Type.GetGenericTypeDefinition();
 
-				return CompileListInitExpressionForListOfT(o, target, listInitExpression, bindings); 
+				if (t == typeof (List<>))
+				{
+					return CompileListInitExpressionForListOfT(o, target, listInitExpression, bindings); 
+				}
+				
+				if (t == typeof(Dictionary<,>))
+				{
+					return CompileListInitExpressionForDictionaryKonV(o, target, listInitExpression, bindings);
+				}
+
+				throw new NotSupportedException("Only List<T> and Dictionary<K,V> are supported.");
+			}
+
+			private Expression CompileListInitExpressionForDictionaryKonV(ParameterExpression o, Type target, 
+				ListInitExpression listInitExpression, Dictionary<ParameterExpression, Expression> bindings)
+			{
+				Expression check = Expression.TypeIs(o, target);
+
+				int i = 0;
+				foreach (var e in listInitExpression.Initializers)
+				{
+					Expression keyArg = e.Arguments[0];
+					Expression valArg = e.Arguments[1];
+
+					var key = keyArg as ConstantExpression;
+					if (key == null)
+						throw new NotSupportedException("Keys for dictionaries used in pattern matches should be constant expressions.");
+
+					check = Expression.AndAlso(check,
+							Expression.Call(Expression.Convert(o, target), target.GetMethod("ContainsKey"), key));
+
+					ParameterExpression pe;
+					ConstantExpression ce;
+
+					if ((pe = valArg as ParameterExpression) != null)
+					{
+						if (bindings.ContainsKey(pe))
+						{
+							check = Expression.AndAlso(check,
+								GetEqualityCheckForDictionaryEntry(o, target, key, bindings[pe]));
+						}
+						else
+						{
+							bindings[pe] = Expression.Call(Expression.Convert(o,target), target.GetMethod("get_Item"), key);
+						}
+					}
+					else if ((ce = valArg as ConstantExpression) != null)
+					{
+						check = Expression.AndAlso(check, 
+							GetEqualityCheckForDictionaryEntry(o, target, key, ce));
+					}
+					else
+						throw new NotSupportedException("Can only match constants.");
+
+					i++;
+				}
+
+				return check;
 			}
 
 			private Expression CompileListInitExpressionForListOfT(ParameterExpression o, Type target, 

@@ -160,6 +160,23 @@ namespace PatternMatching
 			}
 		}
 
+		public static void BisectWithDictionaryInitTest()
+		{
+			var bisect = new Pattern<bool>()
+				.Match((int x) => new Dictionary<string, int> { { "x", x }, { "y", x } }, x => true)
+				.Else(() => false);
+
+			bisect.Compile();
+
+			var rand = new Random();
+			for (int i = 0; i < 100; i++)
+			{
+				var p = new Dictionary<string, int> { { "x", rand.Next(0, 5) }, { "y", rand.Next(0, 5) } };
+				if (bisect.Execute(p))
+					Console.WriteLine(p["x"] + "," + p["y"]);
+			}
+		}
+
 		static void Main(string[] args)
 		{
 			/* MatchTest();
@@ -168,6 +185,7 @@ namespace PatternMatching
 			BisectTest();
 			BisectWithObjectInitTest();
 			BisectWithListInitTest();
+			BisectWithDictionaryInitTest();
 
 			Console.ReadKey();
 		}
