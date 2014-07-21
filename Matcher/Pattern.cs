@@ -287,7 +287,13 @@ namespace PatternMatching.Matcher
 					match = CompileMemberInitExpression(o, target, expression, bindings); 
 				}
 				else if (Match.Body is NewArrayExpression)
-					match = CompileNewArrayExpression(o, target, expression, bindings); 
+				{
+					match = CompileNewArrayExpression(o, target, expression, bindings);
+				}
+				else if (Match.Body is ListInitExpression)
+				{
+					match = CompileListInitExpression(o, target, expression, bindings); 
+				}
 				else
 				{
 					throw new NotSupportedException("Unsupported expression detected.");
@@ -327,6 +333,19 @@ namespace PatternMatching.Matcher
 					Expression.Convert(
 						Expression.ArrayIndex(
 							Expression.Convert(parameterExpression, target), Expression.Constant(index)), typeof(object));
+
+				var rightPart = Expression.Convert(right, typeof(object));
+
+				// TODO: what's wrong with the Object.Equals method?
+				return Expression.Call(typeof(object), "Equals", new Type[0], leftPart, rightPart);
+			}
+
+			private Expression GetEqualityCheckForListOfT(ParameterExpression o, Type target, int index, Expression right)
+			{
+				var leftPart = 
+					Expression.Convert(
+						Expression.Call(Expression.Convert(o, target), target.GetMethod("get_Item"), Expression.Constant(index)), 
+						typeof (object));
 
 				var rightPart = Expression.Convert(right, typeof(object));
 
@@ -479,6 +498,82 @@ namespace PatternMatching.Matcher
 					else if ((ce = e as ConstantExpression) != null)
 					{
 						check = Expression.AndAlso(check, GetEqualityCheck(o, target, i, ce));
+					}
+					else
+						throw new NotSupportedException("Can only match constants.");
+
+					i++;
+				}
+
+				return check; 
+			}
+
+			private Expression CompileListInitExpression(ParameterExpression o, Type target, 
+				Expression expression, Dictionary<ParameterExpression, Expression> bindings)
+			{
+				var listInitExpression = expression as ListInitExpression;
+
+				if (listInitExpression == null)
+				{
+					throw new ArgumentException("expression", new Exception("Expression is not instance of ListInitExpression"));
+				}
+
+				if (listInitExpression.NewExpression.Arguments.Count != 0)
+					throw new NotSupportedException("Collection initializers in match expressions should use the default constructor.");
+
+				if (listInitExpression.Type.GetGenericTypeDefinition() != typeof(List<>))
+					throw new NotSupportedException("Only List<T> is supported.");
+
+				return CompileListInitExpressionForListOfT(o, target, listInitExpression, bindings); 
+			}
+
+			private Expression CompileListInitExpressionForListOfT(ParameterExpression o, Type target, 
+				ListInitExpression listInitExpression, Dictionary<ParameterExpression, Expression> bindings)
+			{
+				Expression check = Expression.AndAlso(
+					Expression.TypeIs(o, target),
+					Expression.Equal(
+						Expression.Property(
+							Expression.Convert(
+								o,
+								target
+							),
+							"Count"
+						), Expression.Constant(listInitExpression.Initializers.Count)
+					)
+				);
+
+				int i = 0;
+				foreach (var e in listInitExpression.Initializers)
+				{
+					//
+					// Note: We know we're processing List<T>, which only has one Add overload,
+					//       so we omit additional checks for now.
+					//
+					Expression arg = e.Arguments[0];
+
+					ParameterExpression pe;
+					ConstantExpression ce;
+
+					if ((pe = arg as ParameterExpression) != null)
+					{
+						if (bindings.ContainsKey(pe))
+						{
+							check = Expression.AndAlso(check, GetEqualityCheckForListOfT(o, target, i, bindings[pe]));
+						}
+						else
+							bindings[pe] = Expression.Call(
+								Expression.Convert(
+									o,
+									target
+								),
+								target.GetMethod("get_Item"),
+								Expression.Constant(i)
+							);
+					}
+					else if ((ce = arg as ConstantExpression) != null)
+					{
+						check = Expression.AndAlso(check, GetEqualityCheckForListOfT(o, target, i, ce));
 					}
 					else
 						throw new NotSupportedException("Can only match constants.");

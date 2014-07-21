@@ -142,6 +142,24 @@ namespace PatternMatching
 			}
 		}
 
+		public static void BisectWithListInitTest()
+		{
+			var bisect = new Pattern<bool>()
+				.Match((int x) => new List<int> { x, x, 0 }, x => true)
+				.Else(() => false);
+
+			bisect.Compile();
+
+			var rand = new Random();
+
+			for (int i = 0; i < 100; i++)
+			{
+				var p = new[] { rand.Next(0, 5), rand.Next(0, 5), rand.Next(0, 5) };
+				if (bisect.Execute(p))
+					Console.WriteLine(p[0] + "," + p[1] + "," + p[2]);
+			}
+		}
+
 		static void Main(string[] args)
 		{
 			/* MatchTest();
@@ -149,6 +167,7 @@ namespace PatternMatching
 			FibTest();*/
 			BisectTest();
 			BisectWithObjectInitTest();
+			BisectWithListInitTest();
 
 			Console.ReadKey();
 		}
