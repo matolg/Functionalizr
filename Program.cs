@@ -38,8 +38,6 @@ namespace PatternMatching
 				.Match((string name) => new Person(name, 5), name => true)
 				.Else(() => false);
 
-			matcher.Compile();
-
 			var res3 = persons.Select(matcher.Execute).ToList();
 
 			watch.Reset();
@@ -64,12 +62,15 @@ namespace PatternMatching
 				"Hello"
 			};
 
-			var res = people.Select(p => new Pattern<string>(p)
+			var pattern = new Pattern<string>()
 				.Match((string name) => new Person(name, 25), name => name + " is 25.")
 				.Match((int age) => new Person("John", age), age => "John is " + age + ".")
 				.Match((string name, int age) => new Person(name, age), (name, age) => "I'm matching them all!")
-				.Else(p.ToString)
-			);
+				.Else(() => "Fin");
+
+			pattern.Execute(people);
+
+			var res = people.Select(pattern.Execute);
 
 			foreach (var s in res)
 				Console.WriteLine(s);
@@ -80,7 +81,7 @@ namespace PatternMatching
 			return new Pattern<uint>(n)
 				.Match(() => 0, () => 1)
 				.Match(() => 1, () => 1)
-				.Else(() => Fib(n - 1) + Fib(n - 2)).Result;
+				.Else(() => Fib(n - 1) + Fib(n - 2)).Execute(n);
 		}
 
 		public static void FibTest()
@@ -95,8 +96,6 @@ namespace PatternMatching
 			var bisect = new Pattern<bool>()
 				.Match((int x) => new Point(x, x), x => true)
 				.Else(() => false);
-
-			bisect.Compile();
 
 			var rand = new Random();
 			for (int i = 0; i < 100; i++)
@@ -113,9 +112,8 @@ namespace PatternMatching
 				.Match((int x) => new Point { X = x, Y = x }, x => true)
 				.Else(() => false);
 
-			bisect.Compile();
-
 			var rand = new Random();
+
 			for (int i = 0; i < 100; i++)
 			{
 				var p = new Point(rand.Next(1, 5), rand.Next(1, 5));
@@ -129,8 +127,6 @@ namespace PatternMatching
 			var bisect = new Pattern<bool>()
 				.Match((int x) => new[] { x, x, 0 }, x => true)
 				.Else(() => false);
-
-			bisect.Compile();
 
 			var rand = new Random();
 
@@ -148,8 +144,6 @@ namespace PatternMatching
 				.Match((int x) => new List<int> { x, x, 0 }, x => true)
 				.Else(() => false);
 
-			bisect.Compile();
-
 			var rand = new Random();
 
 			for (int i = 0; i < 100; i++)
@@ -166,8 +160,6 @@ namespace PatternMatching
 				.Match((int x) => new Dictionary<string, int> { { "x", x }, { "y", x } }, x => true)
 				.Else(() => false);
 
-			bisect.Compile();
-
 			var rand = new Random();
 			for (int i = 0; i < 100; i++)
 			{
@@ -179,13 +171,13 @@ namespace PatternMatching
 
 		static void Main(string[] args)
 		{
-			/* MatchTest();
-			Bench();
-			FibTest();*/
-			BisectTest();
-			BisectWithObjectInitTest();
-			BisectWithListInitTest();
-			BisectWithDictionaryInitTest();
+			MatchTest();
+//			Bench();
+//			FibTest();
+//			BisectTest();
+//			BisectWithObjectInitTest();
+//			BisectWithListInitTest();
+//			BisectWithDictionaryInitTest();
 
 			Console.ReadKey();
 		}

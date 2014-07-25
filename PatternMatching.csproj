@@ -41,6 +41,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Matcher\ClosedPattern.cs" />
+    <Compile Include="Matcher\MatchEntry.cs" />
     <Compile Include="Matcher\Pattern.cs" />
     <Compile Include="Matcher\PropertyAttribute.cs" />
     <Compile Include="Person.cs" />
