@@ -4,16 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{541F8E3B-D81B-43FA-BE24-7539781CEAFF}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{99F8514B-8FEB-41A6-948B-643A55BDCE5A}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>PatternMatching</RootNamespace>
-    <AssemblyName>PatternMatching</AssemblyName>
+    <RootNamespace>Functionalizr.Core</RootNamespace>
+    <AssemblyName>Functionalizr.Core</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -23,7 +22,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -43,15 +41,9 @@
   <ItemGroup>
     <Compile Include="Matcher\ClosedPattern.cs" />
     <Compile Include="Matcher\MatchEntry.cs" />
+    <Compile Include="Matcher\MatchPropertyAttribute.cs" />
     <Compile Include="Matcher\Pattern.cs" />
-    <Compile Include="Matcher\PropertyAttribute.cs" />
-    <Compile Include="Person.cs" />
-    <Compile Include="Point.cs" />
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

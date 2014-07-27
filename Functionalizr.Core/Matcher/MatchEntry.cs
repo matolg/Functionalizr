@@ -4,7 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace PatternMatching.Matcher
+namespace Functionalizr.Core.Matcher
 {
 	public class MatchEntry
 	{
@@ -154,13 +154,6 @@ namespace PatternMatching.Matcher
 			return Expression.TypeIs(parameterExpression, target);
 		}
 
-		private static bool TryMatchParameterExpression(object o, ParameterExpression pe,
-			Dictionary<ParameterExpression, Expression> bindings)
-		{
-			bindings[pe] = null;
-			return pe.Type.IsInstanceOfType(o);
-		}
-
 		private Expression CompileNewExpression(ParameterExpression o, Type target,
 			Expression expression, Dictionary<ParameterExpression, Expression> bindings)
 		{
@@ -182,8 +175,8 @@ namespace PatternMatching.Matcher
 				//
 				// Mapping information from constructor parameters to properties required.
 				//
-				PropertyAttribute pa = param.GetCustomAttributes(typeof(PropertyAttribute), false)
-					.Cast<PropertyAttribute>().SingleOrDefault();
+				MatchPropertyAttribute pa = param.GetCustomAttributes(typeof(MatchPropertyAttribute), false)
+					.Cast<MatchPropertyAttribute>().SingleOrDefault();
 
 				if (pa == null)
 					throw new InvalidOperationException("Input object doesn't have required mapping information.");

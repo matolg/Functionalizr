@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("PatternMatching")]
+[assembly: AssemblyTitle("Functionalizr.Test")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("PatternMatching")]
+[assembly: AssemblyProduct("Functionalizr.Test")]
 [assembly: AssemblyCopyright("Copyright ©  2014")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("555d80aa-8294-45a1-8019-d2d8632126e0")]
+[assembly: Guid("2060f406-17ac-4e58-b6bc-9565327a2cba")]
 
 // Version information for an assembly consists of the following four values:
 //

@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using PatternMatching.Matcher;
+using Functionalizr.Core.Matcher;
+using Functionalizr.Test.Model;
 
-namespace PatternMatching
+namespace Functionalizr.Test
 {
-	class Program
+	class SomeCases
 	{
 		public static void Bench()
 		{
@@ -49,31 +50,6 @@ namespace PatternMatching
 			Console.WriteLine(watch.Elapsed + " " + watch.ElapsedMilliseconds / baseMs);
 
 			Debug.Assert(baseline.SequenceEqual(res3));
-		}
-
-		public static void MatchTest()
-		{
-			var people = new List<object>
-				{
-				new Person("Bart", 25),
-				new Person("John", 52),
-				new Person("Lisa", 25),
-				new Person("Rosa", 63),
-				"Hello"
-			};
-
-			var pattern = new Pattern<string>()
-				.Match((string name) => new Person(name, 25), name => name + " is 25.")
-				.Match((int age) => new Person("John", age), age => "John is " + age + ".")
-				.Match((string name, int age) => new Person(name, age), (name, age) => "I'm matching them all!")
-				.Else(() => "Fin");
-
-			pattern.Execute(people);
-
-			var res = people.Select(pattern.Execute);
-
-			foreach (var s in res)
-				Console.WriteLine(s);
 		}
 
 		public static uint Fib(uint n)
@@ -167,19 +143,6 @@ namespace PatternMatching
 				if (bisect.Execute(p))
 					Console.WriteLine(p["x"] + "," + p["y"]);
 			}
-		}
-
-		static void Main(string[] args)
-		{
-			MatchTest();
-//			Bench();
-//			FibTest();
-//			BisectTest();
-//			BisectWithObjectInitTest();
-//			BisectWithListInitTest();
-//			BisectWithDictionaryInitTest();
-
-			Console.ReadKey();
 		}
 	}
 }

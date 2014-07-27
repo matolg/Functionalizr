@@ -1,4 +1,4 @@
-namespace PatternMatching
+namespace Functionalizr.Test.Model
 {
 	internal class Point
 	{

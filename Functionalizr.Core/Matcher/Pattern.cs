@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace PatternMatching.Matcher
+namespace Functionalizr.Core.Matcher
 {
 	// TODO: add bool for lazy execution with one ctor
 	// TODO: use ConditionalWeakTable for cache (use Flyweight pattern)

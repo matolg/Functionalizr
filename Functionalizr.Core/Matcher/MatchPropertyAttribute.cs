@@ -1,9 +1,9 @@
 using System;
 
-namespace PatternMatching.Matcher
+namespace Functionalizr.Core.Matcher
 {
 	[AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
-	internal sealed class PropertyAttribute : Attribute
+	public sealed class MatchPropertyAttribute : Attribute
 	{
 		public string Name { get; set; }
 	}
